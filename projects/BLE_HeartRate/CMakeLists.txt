@@ -47,6 +47,7 @@ endmacro()
 set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
 set(CMAKE_C_COMPILER   arm-none-eabi-gcc)
 set(SIZE_COMMAND       arm-none-eabi-size)
+set(OBJCOPY_COMMAND       arm-none-eabi-objcopy)
 set(MAIN_TARGET        ${PROJECT_NAME}.elf)
 enable_language(ASM)
 
@@ -96,12 +97,14 @@ include_directories(
 
 # Generic compiler flags
 add_definitions(
+    -mcpu=cortex-m0 -mthumb
     -Wabi
     -Wno-error=switch
     -Wno-switch
     -fdata-sections
     -ffunction-sections
     -fmessage-length=0
+    -Wall
     -fno-common
     -fno-exceptions
     -funsigned-bitfields
@@ -116,9 +119,25 @@ add_definitions(
     -D__CORTEX_M0
     -DARM_MATH_CM0
     -D__MBED__=1
+    -DTARGET_ARCH_BLE 
+    -DTARGET_MCU_NRF51822 
+    -DTOOLCHAIN_GCC_ARM  
+    -DMBED_BUILD_TIMESTAMP=1409211084.44 
+    -DTARGET_FF_ARDUINO
     -Wa,-adhlns=$@.lst
     -g3
     -ggdb
+    -mcpu=cortex-m0 
+    -mthumb 
+    -Wl,--gc-sections 
+    -Wl,--wrap=main 
+    --specs=nano.specs
+    -lstdc++ 
+    -lsupc++ 
+    -lm 
+    -lc 
+    -lgcc 
+    -lnosys
 )
 
 # Language specifc compiler flags.
@@ -190,7 +209,8 @@ add_executable(${MAIN_TARGET} ${SRCS})
 add_custom_command(
     TARGET ${MAIN_TARGET}
     COMMAND ${SIZE_COMMAND} ${MAIN_TARGET}
-    COMMAND ${TOOLCHAIN_SYSROOT}/bin/fromelf --bin -o ${PROJECT_NAME}.bin ${MAIN_TARGET} # convert .elf to .bin
+    #COMMAND ${TOOLCHAIN_SYSROOT}/bin/fromelf --bin -o ${PROJECT_NAME}.bin ${MAIN_TARGET} # convert .elf to .bin
+    COMMAND ${OBJCOPY_COMMAND} ${MAIN_TARGET}  -O binary ${PROJECT_NAME}.bin  # convert .elf to .bin
     COMMAND srec_cat ${MBED_SRC_PATH}/targets/hal/TARGET_NORDIC/TARGET_MCU_NRF51822/Lib/s110_nrf51822_7_0_0/s110_nrf51822_7.0.0_softdevice.hex -intel ${PROJECT_NAME}.bin -binary -offset 0x16000 -o combined.hex -intel
     # follow this by copying the resulting combined.hex onto the target (possibly over USB)
 )
